@@ -13,35 +13,22 @@ SuctionGripperMultibodyModel::get_gripper_model_instance() const {
   }
 }
 
-const std::vector<drake::geometry::GeometryId>&
-SuctionGripperMultibodyModel::get_suction_cup_act_pt_geom_id_vec() const {
-  if (suction_cup_act_pt_geom_id_vec_.empty()) {
+const std::vector<drake::multibody::BodyIndex>&
+SuctionGripperMultibodyModel::get_suction_cup_base_body_id_vec() const {
+  if (suction_cup_base_body_idx_vec_.empty()) {
     throw std::runtime_error(
-        "Suction cup action point geometries not defined.");
+        "Suction cup base body indices not defined.");
   } else {
-    return suction_cup_act_pt_geom_id_vec_;
+    return suction_cup_base_body_idx_vec_;
   }
 }
 
-const std::unordered_map<drake::geometry::GeometryId,
-                         drake::multibody::BodyIndex>&
-SuctionGripperMultibodyModel::get_suction_cup_act_pt_geom_id_to_body_idx_map()
-    const {
-  if (suction_cup_act_pt_geom_id_to_body_idx_map_.empty()) {
-    throw std::runtime_error(
-        "Suction cup action-point-to-body map not defined");
-  } else {
-    return suction_cup_act_pt_geom_id_to_body_idx_map_;
-  }
+drake::geometry::GeometryId SuctionGripperMultibodyModel::get_base_body_geom_id() const {
+  return base_body_geom_id_;
 }
 
-const std::vector<std::vector<drake::geometry::GeometryId>>&
-SuctionGripperMultibodyModel::get_suction_cup_edge_pt_geom_id_vec() const {
-  if (suction_cup_edge_pt_geom_id_vec_.empty()) {
-    throw std::runtime_error("Suction cup edge point geometries not defined.");
-  } else {
-    return suction_cup_edge_pt_geom_id_vec_;
-  }
+drake::geometry::GeometryId SuctionGripperMultibodyModel::get_cup_body_geom_id() const {
+  return cup_body_geom_id_;
 }
 
 }  // namespace drake::examples::multibody::suction_gripper

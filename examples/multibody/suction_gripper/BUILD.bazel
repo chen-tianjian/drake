@@ -24,6 +24,21 @@ drake_cc_library(
 )
 
 drake_cc_library(
+    name = "abstract_logger",
+    srcs = [
+        "abstract_logger.cc",
+    ],
+    hdrs = [
+        "abstract_logger.h",
+    ],
+    deps = [
+        "//multibody/plant",
+        "//systems/framework:leaf_system",
+        "//multibody/tree",
+    ],
+)
+
+drake_cc_library(
     name = "suction_gripper_multibody_model",
     srcs = [
         "suction_gripper_multibody_model.cc",
@@ -54,11 +69,15 @@ drake_cc_library(
 drake_cc_binary(
     name = "package_swing",
     srcs = ["package_swing.cc"],
+    data = [":models"],
     deps = [
+        "//common/proto:call_python",
         ":example_gripper_multibody_model",
+        ":abstract_logger",
         ":suction_force_model",
         ":suction_gripper_multibody_model",
         "//geometry:drake_visualizer",
+        "//systems/primitives:vector_log_sink",
         "//multibody/plant",
         "//multibody/tree",
         "//systems/analysis:simulator",
@@ -73,14 +92,18 @@ drake_cc_binary(
 drake_cc_binary(
     name = "pick_and_place",
     srcs = ["pick_and_place.cc"],
+    data = [":models"],
     deps = [
         ":example_gripper_multibody_model",
+        ":abstract_logger",         
         ":suction_force_model",
         ":suction_gripper_multibody_model",
         "//common/trajectories:piecewise_polynomial",
         "//geometry:drake_visualizer",
         "//multibody/plant",
         "//multibody/tree",
+        "//multibody/parsing",
+        "//systems/primitives:vector_log_sink",
         "//systems/analysis:simulator",
         "//systems/analysis:simulator_gflags",
         "//systems/analysis:simulator_print_stats",
@@ -92,6 +115,16 @@ drake_cc_binary(
         "//visualization:visualization_config_functions",
         "@gflags",
     ],
+)
+
+filegroup(
+    name = "models",
+    srcs = glob([
+        "**/*.sdf",
+        "**/*.obj",
+        "**/*.png"
+    ]),
+    visibility = ["//:__pkg__"],
 )
 
 add_lint_tests()

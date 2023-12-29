@@ -11,6 +11,13 @@
 
 namespace drake::examples::multibody::suction_gripper {
 
+const double kCupHeight = 0.027;
+const double kCupOuterDiameter = 0.03;
+
+const double kBaseHeight = 0.3;
+const double kCupFittingHeight = 0.05;
+
+
 /// @brief The action-reaction pair of ExternallyAppliedSpatialForce.
 class ExternallyAppliedSpatialForcePair {
  public:
@@ -103,27 +110,18 @@ class CupObjInterface : public drake::systems::LeafSystem<double> {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CupObjInterface)
   /// @brief Constructor of the CupObjInterface class.
   /// @param time_step Time step of the CupObjInterface leaf system, in s.
+
+
   /// @param suction_cup_area Effective suction cup area for each cup, in m^2.
-  /// @param suction_cup_act_pt_geom_id_vec A vector of GeometryId of the cup
-  /// action points, ordered by cup index (if there are multiple cups).
-  /// @param suction_cup_act_pt_geom_id_to_body_idx_map An unordered_map from
-  /// GeometryId of the cup action points to the corresponding BodyIndex.
-  /// @param suction_cup_edge_pt_geom_id_vec A vector of vector of GeometryId of
-  /// the cup edge points, each inner vector is for different edge point
-  /// geometries and the outer vector is for different cups.
   /// @param obj_geom_id_to_body_idx_map An unordered_map from GeometryId of the
   /// object to the corresponding BodyIndex.
-  CupObjInterface(double time_step, double suction_cup_area,
-                  const std::vector<drake::geometry::GeometryId>&
-                      suction_cup_act_pt_geom_id_vec,
+  CupObjInterface(double time_step, double max_suction_dist, double suction_cup_area,
                   const std::unordered_map<drake::geometry::GeometryId,
                                            drake::multibody::BodyIndex>&
-                      suction_cup_act_pt_geom_id_to_body_idx_map,
-                  const std::vector<std::vector<drake::geometry::GeometryId>>&
-                      suction_cup_edge_pt_geom_id_vec,
-                  const std::unordered_map<drake::geometry::GeometryId,
-                                           drake::multibody::BodyIndex>&
-                      obj_geom_id_to_body_idx_map);
+                      obj_geom_id_to_body_idx_map,
+                  const std::vector<drake::multibody::BodyIndex>& suction_cup_base_body_id_vec,
+                  const drake::geometry::GeometryId base_body_geom_id,
+                  const drake::geometry::GeometryId cup_body_geom_id);
 
   const drake::systems::InputPort<double>& GetGeomQueryInputPort() const {
     return get_input_port(geom_query_input_port_idx_);
@@ -134,6 +132,9 @@ class CupObjInterface : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::OutputPort<double>& GetSuctionForceOutputPort() const {
     return get_output_port(suction_force_output_port_idx_);
+  }
+  const drake::systems::OutputPort<double>& GetSingleSuctionForceOutputPort() const {
+    return get_output_port(single_suction_force_output_port_idx_);
   }
   const drake::systems::OutputPort<double>& GetCupObjDistOutputPort() const {
     return get_output_port(suction_cup_obj_dist_output_port_idx_);
@@ -147,28 +148,32 @@ class CupObjInterface : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       std::vector<drake::multibody::ExternallyAppliedSpatialForce<double>>*
           suction_force_vec_ptr) const;
+  void CalcSingleSuctionForce(
+      const drake::systems::Context<double>& context,
+      drake::systems::BasicVector<double>* single_suction_force_vector_ptr) const; 
   void OutputCupObjDist(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* cup_obj_dist_vec_ptr) const;
 
+
+  double max_suction_dist_;
   double suction_cup_area_;
 
-  std::vector<drake::geometry::GeometryId> suction_cup_act_pt_geom_id_vec_;
-  std::unordered_map<drake::geometry::GeometryId, drake::multibody::BodyIndex>
-      suction_cup_act_pt_geom_id_to_body_idx_map_;
-  std::vector<std::vector<drake::geometry::GeometryId>>
-      suction_cup_edge_pt_geom_id_vec_;
   std::unordered_map<drake::geometry::GeometryId, drake::multibody::BodyIndex>
       obj_geom_id_to_body_idx_map_;
+  std::vector<drake::multibody::BodyIndex> suction_cup_base_body_id_vec_;
+  drake::geometry::GeometryId base_body_geom_id_; // visual geometry of the base
+  drake::geometry::GeometryId cup_body_geom_id_;
 
   int num_suction_cups_{-1};
 
   int geom_query_input_port_idx_{-1};
   int suction_cup_pressure_input_port_idx_{-1};
   int suction_force_output_port_idx_{-1};
+  int single_suction_force_output_port_idx_{-1};
   int suction_cup_obj_dist_output_port_idx_{-1};
 
-  int suction_cup_act_pt_closest_obj_signed_dist_pair_state_idx_{-1};
+  int suction_cup_base_bdy_qry_pt_closest_obj_signed_dist_to_pt_state_idx_{-1};
   int suction_cup_edge_pt_closest_obj_dist_state_idx_{-1};
 };
 

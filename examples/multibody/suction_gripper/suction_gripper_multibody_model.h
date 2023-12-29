@@ -15,8 +15,9 @@ class SuctionGripperMultibodyModel {
  public:
   SuctionGripperMultibodyModel(
       drake::multibody::MultibodyPlant<double>* plant_ptr,
-      const drake::multibody::Body<double>& wrist_body)
-      : plant_ptr_{plant_ptr}, wrist_body_{wrist_body} {
+      const drake::multibody::Body<double>& wrist_body,
+      double cup_modulus)
+      : plant_ptr_{plant_ptr}, wrist_body_{wrist_body}, cup_modulus_{cup_modulus} {
     gripper_model_instance_ =
         plant_ptr_->AddModelInstance("SuctionGripper" + std::to_string(count));
     SuctionGripperMultibodyModel::count++;
@@ -24,13 +25,12 @@ class SuctionGripperMultibodyModel {
 
   virtual ~SuctionGripperMultibodyModel() = default;
 
-  const std::vector<drake::geometry::GeometryId>&
-  get_suction_cup_act_pt_geom_id_vec() const;
-  const std::unordered_map<drake::geometry::GeometryId,
-                           drake::multibody::BodyIndex>&
-  get_suction_cup_act_pt_geom_id_to_body_idx_map() const;
-  const std::vector<std::vector<drake::geometry::GeometryId>>&
-  get_suction_cup_edge_pt_geom_id_vec() const;
+  drake::geometry::GeometryId get_base_body_geom_id() const;
+
+  drake::geometry::GeometryId get_cup_body_geom_id() const;
+
+  const std::vector<drake::multibody::BodyIndex>&
+  get_suction_cup_base_body_id_vec() const;
 
   drake::multibody::ModelInstanceIndex get_gripper_model_instance() const;
   virtual double CalcCupArea() const = 0;
@@ -42,11 +42,12 @@ class SuctionGripperMultibodyModel {
   const drake::multibody::Body<double>& wrist_body_;
   drake::multibody::ModelInstanceIndex gripper_model_instance_;
 
-  std::vector<drake::geometry::GeometryId> suction_cup_act_pt_geom_id_vec_;
-  std::unordered_map<drake::geometry::GeometryId, drake::multibody::BodyIndex>
-      suction_cup_act_pt_geom_id_to_body_idx_map_;
-  std::vector<std::vector<drake::geometry::GeometryId>>
-      suction_cup_edge_pt_geom_id_vec_;
+  std::vector<drake::multibody::BodyIndex> suction_cup_base_body_idx_vec_;
+
+  drake::geometry::GeometryId base_body_geom_id_;
+  drake::geometry::GeometryId cup_body_geom_id_;
+  const double cup_modulus_; 
+
 };
 
 }  // namespace drake::examples::multibody::suction_gripper
