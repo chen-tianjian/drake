@@ -84,7 +84,7 @@ namespace drake::examples::multibody::suction_gripper {
 std::vector<drake::multibody::ModelInstanceIndex> AddPackages(drake::multibody::Parser& parser, const int num_packages){
     std::vector<drake::multibody::ModelInstanceIndex> package_indices;
     for (int i = 0; i < num_packages; ++i) {
-        auto package_model = parser.AddModelFromFile("examples/multibody/suction_gripper/0_18B_hydroelastic.sdf", "0_18B_" + std::to_string(i));
+        auto package_model = parser.AddModels("examples/multibody/suction_gripper/0_18B_hydroelastic.sdf")[0];
         package_indices.push_back(package_model);
     }
 
@@ -374,8 +374,8 @@ int do_main() {
   drake::multibody::Parser parser(&plant);
   const auto packages= AddPackages(parser, FLAGS_num_packages);
 
-  plant.set_discrete_contact_solver(
-      drake::multibody::DiscreteContactSolver::kSap);
+  plant.set_discrete_contact_approximation(
+      drake::multibody::DiscreteContactApproximation::kSap);
 
   // Gravity acting in the -z direction.
   plant.mutable_gravity_field().set_gravity_vector(Eigen::Vector3d{0, 0, -9.81});
