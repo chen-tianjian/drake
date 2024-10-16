@@ -8,6 +8,8 @@
 #include "drake/multibody/plant/externally_applied_spatial_force.h"
 #include "drake/multibody/tree/multibody_tree_indexes.h"
 #include "drake/systems/framework/leaf_system.h"
+#include <drake/geometry/query_results/signed_distance_to_point.h>
+#include <drake/geometry/query_object.h>
 
 namespace drake::examples::multibody::suction_gripper {
 
@@ -154,7 +156,18 @@ class CupObjInterface : public drake::systems::LeafSystem<double> {
   void OutputCupObjDist(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* cup_obj_dist_vec_ptr) const;
-
+  /**
+   * @brief Currently (08/2024) Drakes's ComputeSignedDistanceToPoint ignores mesh/convex shapes
+   * This function compute and append the signed distance to the std::vector<drake::geometry::SignedDistanceToPoint<double>>
+   * obtained from Drakes's ComputeSignedDistanceToPoint
+   * @param dist_to_pt_vec reference to the std::vector<drake::geometry::SignedDistanceToPoint<double>> to be appended to
+   * @param query_pt the query point in world frame
+   * @param geom_query the geometry query object
+   * @param exclude_thresh the threshold for excluding far-away geometries
+   */
+  void AppendSignedDistanceFromConvexHullToPoint(std::vector<drake::geometry::SignedDistanceToPoint<double>>& dist_to_pt_vec,
+                                                  Eigen::Vector3d query_pt, const drake::geometry::QueryObject<double>& geom_query,
+                                                  double exclude_thresh) const;
 
   double max_suction_dist_;
   double suction_cup_area_;
@@ -176,5 +189,20 @@ class CupObjInterface : public drake::systems::LeafSystem<double> {
   int suction_cup_base_bdy_qry_pt_closest_obj_signed_dist_to_pt_state_idx_{-1};
   int suction_cup_edge_pt_closest_obj_dist_state_idx_{-1};
 };
+
+
+/**
+ * @brief Calculate the approximated signed distance from a point to a convex hull
+ * @param queryPoint the point to query
+ * @param convexHull the convex hull in the format of PolygonSurfaceMesh
+ * @param smoothFactor the factor controlling the smoothness of the approximation, larger factor means less discontinuity but may
+ * also introduce artifacts
+ * @return a tuple of approximated nearest point in the convex hull, approximated signed distance, and approximated gradient
+ * @note the queryPoint and vertices need to be in the same coordinate frame
+ * @note the idea of this algorithm is taken from https://arxiv.org/pdf/2408.09612 Section IV.A
+ */
+std::tuple<Eigen::Vector3d, double, Eigen::Vector3d> CalcApproxSignedDistanceToConvexHull(
+        const Eigen::Vector3d& queryPoint, const drake::geometry::PolygonSurfaceMesh<double>& convexHull,
+        double smoothFactor = 2e-3);
 
 }  // namespace drake::examples::multibody::suction_gripper

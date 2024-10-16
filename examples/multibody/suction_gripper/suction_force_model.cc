@@ -73,7 +73,7 @@ void CupPressureSource::CalcSuctionCupPressure(
   for (int suction_cup_idx = 0; suction_cup_idx < num_suction_cups_;
        suction_cup_idx++) {
     double suction_cmd = suction_cmd_vec[suction_cup_idx];
-    DRAKE_DEMAND(suction_cmd >= 0. && suction_cmd <= 1.);
+    // DRAKE_DEMAND(suction_cmd >= 0. && suction_cmd <= 1.);
     double dist = cup_obj_dist_vec[suction_cup_idx];
     double pressure = 0.;
     // use a simple linear pressure-distance model
@@ -199,6 +199,10 @@ drake::systems::EventStatus CupObjInterface::UpdateDists(
     auto p_BoQo_W = Eigen::Vector3d(0, 0, -kCupHeight*3/4); // X_BG. translate down to the bottom of the entire cup  
     const auto p_WoQo_W = p_WoBo_W + p_BoQo_W;  
     auto signed_dist_pairs = geom_query.ComputeSignedDistanceToPoint(p_WoQo_W);
+
+    AppendSignedDistanceFromConvexHullToPoint(signed_dist_pairs, p_WoQo_W, geom_query,
+                                                  0.1);
+
     auto min_suction_cup_query_pt_obj_dist = std::numeric_limits<double>::infinity();
     for (const auto& signed_dist_to_pt : signed_dist_pairs) {
         if (obj_geom_id_to_body_idx_map_.find(signed_dist_to_pt.id_G) != obj_geom_id_to_body_idx_map_.end() && signed_dist_to_pt.distance < min_suction_cup_query_pt_obj_dist) {
@@ -231,6 +235,8 @@ drake::systems::EventStatus CupObjInterface::UpdateDists(
        (void) max_suction_dist_;
        // no point in looking further than min_suction_cup_query_pt_obj_dist away + radius
        signed_dist_pairs = geom_query.ComputeSignedDistanceToPoint(p_WoQo_W_edge, min_suction_cup_query_pt_obj_dist+kCupOuterDiameter/2);
+       AppendSignedDistanceFromConvexHullToPoint(signed_dist_pairs, p_WoQo_W_edge, geom_query,
+                                                  0.1);
 
        // find pair where pair.id_G = closest_obj_geom_id if it exists in signed_dist_pairs
        const auto& it = std::find_if(signed_dist_pairs.begin(), signed_dist_pairs.end(), [&](const auto& pair){return pair.id_G == closest_obj_geom_id;});
@@ -347,6 +353,77 @@ void CupObjInterface::OutputCupObjDist(
           suction_cup_edge_pt_closest_obj_dist_state_idx_);
   cup_obj_dist_vec_ptr->SetFromVector(
       suction_cup_edge_pt_closest_obj_dist_state.get_value());
+}
+
+void CupObjInterface::AppendSignedDistanceFromConvexHullToPoint(
+        std::vector<drake::geometry::SignedDistanceToPoint<double>>& dist_to_pt_vec, Eigen::Vector3d query_pt,
+        const drake::geometry::QueryObject<double>& geom_query, double exclude_thresh) const {
+    auto& inspector = geom_query.inspector();
+    for (const auto& [obj_geom_id, _] : obj_geom_id_to_body_idx_map_) {
+        auto obj_geom_shape_name = inspector.GetShape(obj_geom_id).type_name();
+        if (obj_geom_shape_name == "Mesh" || obj_geom_shape_name == "Convex") {
+            auto* convex_hull_ptr = inspector.GetConvexHull(obj_geom_id);
+
+            auto bbox_center_dim_pair = convex_hull_ptr->CalcBoundingBox(); // axis-aligned bounding box
+            double bounding_sphere_radius = bbox_center_dim_pair.second.norm() / 2;
+
+            // skip distance query computation if outside bounding sphere by some margin
+            auto world_geom_transform = geom_query.GetPoseInWorld(obj_geom_id);
+            if ((world_geom_transform.translation() - query_pt).norm() - bounding_sphere_radius > exclude_thresh) { continue; }
+
+            Eigen::Vector3d query_pt_in_geom_frame = world_geom_transform.inverse() * query_pt;
+            auto id_G = obj_geom_id;
+            auto [p_GN, distance, grad_G] = CalcApproxSignedDistanceToConvexHull(query_pt_in_geom_frame, *convex_hull_ptr);
+            Eigen::Vector3d grad_W = world_geom_transform.rotation() * grad_G;
+            drake::geometry::SignedDistanceToPoint<double> dist_to_pt(id_G, p_GN, distance, grad_W);
+
+            dist_to_pt_vec.push_back(dist_to_pt);
+        }
+    }
+}
+
+
+std::tuple<Eigen::Vector3d, double, Eigen::Vector3d> CalcApproxSignedDistanceToConvexHull(
+        const Eigen::Vector3d& queryPoint, const drake::geometry::PolygonSurfaceMesh<double>& convexHull, double smoothFactor) {
+    // The idea is taken from https://arxiv.org/pdf/2408.09612 Section IV.A
+    // The max signed distance to each face plane can be used as an approximation for signed distance to the mash, with the
+    // assumption that the mesh has large enough number of faces. However, using max function may result in discontinuity. Same as
+    // the paper, we use LogSumExp for smoothing the signed distances, nearest points, and the gradient vectors.
+
+    // Denote: \phi: signed distnace to mesh, phi_i: signed distnace to i-th face plane, \delta: smooth factor, \lambda: exponent
+    // offset for better numerics, \bm{n}_i: normal vector of the i-th face, \bm{q}: query point.
+
+    // Signed distance: \phi = \delta (log(\sum exp(\phi_i / \delta - \lambda)) + \lambda)
+
+    // Gradient: \partial \phi / \partial \bm{q} = (\sum exp(\phi_i/\delta - \lambda) \bm{n_i}) / (\sum exp(\phi_i/\delta -
+    // \lambda))
+
+    // Nearest point: \bm{p} = \bm{q} - \phi * (\partial \phi / \partial \bm{q})
+
+    DRAKE_DEMAND(smoothFactor > 0);
+    double signedDistExpSum = 0;
+    Eigen::Vector3d signedDistExpWeightedNormalVecSum = Eigen::Vector3d::Zero();
+    double offset =
+            0; // we do a transform to avoid overflow of exp function with large exponent, not affecting the LogSumExp result
+    for (int elementIdx = 0; elementIdx < convexHull.num_faces(); elementIdx++) {
+        Eigen::Vector3d normal = convexHull.face_normal(elementIdx);
+        Eigen::Vector3d centroid = convexHull.element_centroid(elementIdx); // can be any point in the face, using centroid only
+                                                                            // because Drake pre-compute this and has a O(1) getter
+        Eigen::Vector3d centroidToQueryPointVec = queryPoint - centroid;
+        double signedDistaceToPlane = centroidToQueryPointVec.dot(normal);
+
+        // assuming all signedDistaceToPlane are in similar order of magnitude, use the 1st element to get a resonable offset
+        if (elementIdx == 0) { offset = signedDistaceToPlane / smoothFactor; }
+
+        double signedDistExp = std::exp(signedDistaceToPlane / smoothFactor - offset);
+        signedDistExpSum += signedDistExp;
+        signedDistExpWeightedNormalVecSum += signedDistExp * normal;
+    }
+
+    double signedDistance = smoothFactor * (offset + std::log(signedDistExpSum));
+    Eigen::Vector3d gradient = (signedDistExpWeightedNormalVecSum / signedDistExpSum).stableNormalized();
+    Eigen::Vector3d nearestPoint = queryPoint - signedDistance * gradient;
+    return {nearestPoint, signedDistance, gradient};
 }
 
 }  // namespace drake::examples::multibody::suction_gripper

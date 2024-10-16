@@ -55,6 +55,15 @@ ExampleGripperMultibodyModel::ExampleGripperMultibodyModel(
       /*name*/ "base_body_cup_fitting_visual_geom",
       /*diffuse_color*/ Eigen::Vector4d(0.5, 0.5, 0.5, 1.0)); // light gray 
 
+
+  // collision geometry for cup_body 
+  geometry::ProximityProperties base_body_props; 
+  geometry::AddContactMaterial(0.0, 5e3 /* point stiffness */, base_friction, &base_body_props);
+
+//   (void) cup_hydroelastic_modulus;
+//   (void) mesh_res_hint;
+  geometry::AddCompliantHydroelasticProperties(0.1, 1e7, &base_body_props);
+
   // TODO: make this hydroelastic too with metal modulus 
   plant_ptr_->RegisterCollisionGeometry(
       /*body*/ base_body,
@@ -64,7 +73,7 @@ ExampleGripperMultibodyModel::ExampleGripperMultibodyModel(
       /*shape*/
       drake::geometry::Cylinder(kCupFittingDiameter / 2, kCupFittingHeight),
       /*name*/ "base_body_cup_fitting_collision_geom",
-      /*coulomb_friction*/ base_friction);
+      /*proximity properties*/ base_body_props);
 
   // TODO: better member variable name to distinguish visual 
   // TODO: add corresponding collision geometry here
@@ -92,36 +101,36 @@ ExampleGripperMultibodyModel::ExampleGripperMultibodyModel(
           drake::multibody::RotationalInertia<double>(
               kCupInertiaX / 2, kCupInertiaY / 2, kCupInertiaZ / 2)));
 
-//   auto& base_to_cup_body_joint =
-//       plant_ptr_->AddJoint<drake::multibody::PrismaticJoint>(
-//           /*name*/ "base_to_cup_body_joint",
-//           /*parent*/ base_body,
-//           /*X_PF*/
-//           drake::math::RigidTransform<double>(Eigen::Vector3d(
-//               0., 0., -kBaseHeight - kCupFittingHeight - kCupHeight * 3 / 4)),
-//           /*child*/ cup_body,
-//           /*X_BM*/ drake::math::RigidTransform<double>(),
-//           /*axis*/ Eigen::Vector3d::UnitZ(),
-//           /*pos_lower_limit*/ 0.,
-//           /*pos_upper_limit*/ 0, // object slips through even if this is 0 
-//           /*damping*/ kCupDamping);
-  plant_ptr_->AddJoint<drake::multibody::WeldJoint>(
+  auto& base_to_cup_body_joint =
+      plant_ptr_->AddJoint<drake::multibody::PrismaticJoint>(
           /*name*/ "base_to_cup_body_joint",
           /*parent*/ base_body,
           /*X_PF*/
-          drake::math::RigidTransform<double>(),
+          drake::math::RigidTransform<double>(Eigen::Vector3d(
+              0., 0., -kBaseHeight - kCupFittingHeight - kCupHeight * 3 / 4)),
           /*child*/ cup_body,
           /*X_BM*/ drake::math::RigidTransform<double>(),
-          drake::math::RigidTransform<double>(Eigen::Vector3d(
-              0., 0., -kBaseHeight - kCupFittingHeight - kCupHeight * 3 / 4))); 
+          /*axis*/ Eigen::Vector3d::UnitZ(),
+          /*pos_lower_limit*/ 0.,
+          /*pos_upper_limit*/ 0, // object slips through even if this is 0 
+          /*damping*/ kCupDamping);
+//   plant_ptr_->AddJoint<drake::multibody::WeldJoint>(
+//           /*name*/ "base_to_cup_body_joint",
+//           /*parent*/ base_body,
+//           /*X_PF*/
+//           drake::math::RigidTransform<double>(),
+//           /*child*/ cup_body,
+//           /*X_BM*/ drake::math::RigidTransform<double>(),
+//           drake::math::RigidTransform<double>(Eigen::Vector3d(
+//               0., 0., -kBaseHeight - kCupFittingHeight - kCupHeight * 3 / 4))); 
 
-// TODO: explore adding back 
-(void) kCupStiffness; 
-(void) kCupDamping;
-//   plant_ptr_->AddForceElement<drake::multibody::PrismaticSpring>(
-//       /*joint*/ base_to_cup_body_joint,
-//       /*nominal_position*/ 0.,
-//       /*stiffness*/ kCupStiffness);
+// // TODO: explore adding back 
+// (void) kCupStiffness; 
+// (void) kCupDamping;
+  plant_ptr_->AddForceElement<drake::multibody::PrismaticSpring>(
+      /*joint*/ base_to_cup_body_joint,
+      /*nominal_position*/ 0.,
+      /*stiffness*/ kCupStiffness);
 
   plant_ptr_->RegisterVisualGeometry(
       /*body*/ cup_body,
