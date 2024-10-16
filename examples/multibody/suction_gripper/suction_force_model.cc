@@ -209,8 +209,10 @@ drake::systems::EventStatus CupObjInterface::UpdateDists(
             min_suction_cup_query_pt_obj_dist = signed_dist_to_pt.distance;
             closest_obj_geom_id = signed_dist_to_pt.id_G; // note: this is where the closest object is computed relative to action point
             suction_cup_base_bdy_qry_pt_closest_obj_signed_dist_to_pt_state.at(suction_cup_idx) = signed_dist_to_pt;
+            suction_point_in_bag_frame = signed_dist_to_pt.p_GN;
         }
     }
+    if (min_suction_cup_query_pt_obj_dist == std::numeric_limits<double>::infinity()) {suction_point_in_bag_frame = Eigen::Vector3d(0,0,0);}
     // TODO: what if no floating bodies present? 
 
 

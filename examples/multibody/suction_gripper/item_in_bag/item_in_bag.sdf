@@ -1,0 +1,143 @@
+<?xml version='1.0'?>
+<sdf version='1.6'>
+<!-- Auto generated with SdfGen.py -->
+<model name="item_in_bag" xmlns:drake='drake'>
+  <link name="bag">
+    <inertial>
+      <inertia>
+        <ixx>0.0001</ixx>
+        <iyy>0.0001</iyy>
+        <izz>0.0001</izz>
+        <ixy>0.000000</ixy>
+        <ixz>0.000000</ixz>
+        <iyz>0.000000</iyz>
+      </inertia>
+      <pose>0 0 0 0 0 0</pose>
+      <mass>0.05</mass>
+    </inertial>
+    <visual name="bag_visual">
+      <pose>0 0 0 0 0 0</pose>
+      <geometry>
+        <!-- <mesh>
+          <uri>bag.obj</uri>
+        </mesh> -->
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.2</length>
+          </cylinder>
+      </geometry>
+      <material>
+        <diffuse>0.5 0.5 0.5 0.2</diffuse>
+      </material>
+    </visual>
+    <collision name="bag_collision">
+      <pose>0 0 0 0 0 0</pose>
+      <geometry>
+        <!-- <mesh>
+          <uri>bag.obj</uri>
+        </mesh> -->
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.2</length>
+          </cylinder>
+      </geometry>
+      <drake:proximity_properties>
+        <drake:compliant_hydroelastic/>
+        <drake:hydroelastic_modulus>5e+05</drake:hydroelastic_modulus>
+        <!-- For more information on how this value is derived, refer to the following quip document:
+        https://quip-amazon.com/3qwrAqhn053G/Youngs-Modulus-Values-Used-for-Hydroelastic-Contact-in-ARGeminiConfig -->
+        <drake:relaxation_time>0.1</drake:relaxation_time>
+        <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+        <drake:mesh_resolution_hint>0.01</drake:mesh_resolution_hint>
+        <drake:point_contact_stiffness>1000000.0</drake:point_contact_stiffness>
+        <!-- For more information on how this value is derived, refer to the following quip document:
+        https://quip-amazon.com/Vp8gAuN3MW70/Friction-Coefficient-Values-for-Materials-in-Gemini -->
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        <drake:mu_static>0.3</drake:mu_static>
+      </drake:proximity_properties>
+    </collision>
+  </link>
+
+
+
+
+
+  <link name="item">
+    <inertial>
+      <inertia>
+        <ixx>0.001</ixx>
+        <iyy>0.001</iyy>
+        <izz>0.001</izz>
+        <ixy>0.000000</ixy>
+        <ixz>0.000000</ixz>
+        <iyz>0.000000</iyz>
+      </inertia>
+      <pose>0 0 0 0 0 0</pose>
+      <mass>0.5</mass>
+    </inertial>
+    <visual name="item_visual">
+      <pose>0 0 0 0 0 0</pose>
+      <geometry>
+        <box>
+          <size>0.1 0.1 0.1</size>
+        </box>
+      </geometry>
+    </visual>
+    <collision name="item_collision">
+      <pose>0 0 0 0 0 0</pose>
+      <geometry>
+        <box>
+          <size>0.1 0.1 0.1</size>
+        </box>
+      </geometry>
+      <drake:proximity_properties>
+        <drake:compliant_hydroelastic/>
+        <drake:hydroelastic_modulus>1e+06</drake:hydroelastic_modulus>
+        <!-- For more information on how this value is derived, refer to the following quip document:
+      https://quip-amazon.com/3qwrAqhn053G/Youngs-Modulus-Values-Used-for-Hydroelastic-Contact-in-ARGeminiConfig -->
+        <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+        <drake:relaxation_time>0.1</drake:relaxation_time>
+        <drake:mesh_resolution_hint>0.1</drake:mesh_resolution_hint>
+        <drake:point_contact_stiffness>1000000.0</drake:point_contact_stiffness>
+        <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        <drake:mu_static>0.3</drake:mu_static>
+      </drake:proximity_properties>
+    </collision>
+  </link>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <frame name='frameA'>
+    <pose relative_to="bag">0 0 0 0 0 0</pose>
+  </frame>
+  <frame name='frameC' attached_to='item'/>
+  <drake:linear_bushing_rpy>
+    <drake:bushing_frameA>frameA</drake:bushing_frameA>
+    <drake:bushing_frameC>frameC</drake:bushing_frameC>
+    <drake:bushing_torque_stiffness>0.1 0.1 0.1</drake:bushing_torque_stiffness>
+    <drake:bushing_torque_damping>0.01 0.01 0.01</drake:bushing_torque_damping>
+    <drake:bushing_force_stiffness>20 20 20</drake:bushing_force_stiffness>
+    <drake:bushing_force_damping>2 2 2</drake:bushing_force_damping>
+  </drake:linear_bushing_rpy>
+
+
+
+  <drake:collision_filter_group name="item_in_bag_self_collision_filtering_group">
+    <drake:member>bag</drake:member>
+    <drake:member>item</drake:member>
+    <drake:ignored_collision_filter_group>item_in_bag_self_collision_filtering_group</drake:ignored_collision_filter_group>
+  </drake:collision_filter_group>
+
+
+</model>
+</sdf>

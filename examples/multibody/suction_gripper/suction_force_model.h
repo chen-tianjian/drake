@@ -11,6 +11,8 @@
 #include <drake/geometry/query_results/signed_distance_to_point.h>
 #include <drake/geometry/query_object.h>
 
+extern Eigen::Vector3d suction_point_in_bag_frame;
+
 namespace drake::examples::multibody::suction_gripper {
 
 const double kCupHeight = 0.027;

@@ -117,12 +117,41 @@ drake_cc_binary(
     ],
 )
 
+drake_cc_binary(
+    name = "pick_and_place_bag",
+    srcs = ["pick_and_place_bag.cc"],
+    data = [":models"],
+    deps = [
+        ":example_gripper_multibody_model",
+        ":abstract_logger",         
+        ":suction_force_model",
+        ":suction_gripper_multibody_model",
+        "//common/trajectories:piecewise_polynomial",
+        "//geometry:drake_visualizer",
+        "//multibody/plant",
+        "//multibody/tree",
+        "//multibody/parsing",
+        "//systems/primitives:vector_log_sink",
+        "//systems/analysis:simulator",
+        "//systems/analysis:simulator_gflags",
+        "//systems/analysis:simulator_print_stats",
+        "//systems/controllers:pid_controller",
+        "//systems/framework:diagram",
+        "//systems/framework:diagram_builder",
+        "//systems/primitives:first_order_low_pass_filter",
+        "//systems/primitives:trajectory_source",
+        "//visualization:visualization_config_functions",
+        "@gflags",
+    ],
+)
+
 filegroup(
     name = "models",
     srcs = glob([
         "**/*.sdf",
         "**/*.obj",
-        "**/*.png"
+        "**/*.png",
+        "**/*.mtl"
     ]),
     visibility = ["//:__pkg__"],
 )
